@@ -28,9 +28,12 @@
         this.y = y;
         this.radius = radius;
         this.speed_y = 0;
-        this.speed_x = 4;
+        this.speed_x = 4.2;
         this.board = board;
-        this.direction = 1;
+        this.direction = -1;
+        this.bounce_angle = 0;
+        this.max_bounce_angle = Math.PI / 12;
+        this.speed = 2;
         board.ball = this;
         this.kind = "circle";
     };
@@ -40,6 +43,27 @@
         move: function () {
             this.x = this.x + this.speed_x * this.direction;
             this.y += this.speed_y;
+        },
+        get width() {
+            return this.radius * 2;
+        },
+        get height() {
+            return this.radius * 2;
+        },
+
+        collision: function (bar) {
+            //COLISION
+            let relative_intersect_y = bar.y + bar.height / 2 - this.y;
+            let normalized_intersect_y = relative_intersect_y / (bar.height / 2);
+
+
+            this.bounce_angle = normalized_intersect_y * this.max_bounce_angle;
+
+            this.speed_y = this.speed * -Math.sin(this.bounce_angle);
+            this.speed_x = this.speed * Math.cos(this.bounce_angle);
+
+            if (this.x > this.board.width / 2) this.direction = -1;
+            else this.direction = 1;
         },
     };
 })();
@@ -90,15 +114,51 @@
                 draw(this.ctx, el);
             }
         },
+        check_colisions: function () {
+            for (let i = this.board.bars.length - 1; i >= 0; i--) {
+                let bar = this.board.bars[i];
+                if (hit(bar, this.board.ball)) {
+                    this.board.ball.collision(bar);
+                }
+            }
+        },
         //INICIO JUEGO 
         play: function () {
             if (this.board.playing) {
                 this.clean();
                 this.draw();
+                this.check_colisions();
                 this.board.ball.move();
             }
         },
     };
+    //VALIDACION COLISIONES
+    function hit(a, b) {
+
+        let hit = false;
+
+        if (b.x + b.width >= a.x && b.x < a.x + a.width) {
+
+            if (b.y + b.height >= a.y && b.y < a.y + a.height) {
+                hit = true;
+            }
+        }
+
+        if (b.x <= a.x && b.x + b.width >= a.x + a.width) {
+
+            if (b.y <= a.y && b.y + b.height >= a.y + a.height) {
+                hit = true;
+            }
+        }
+
+        if (a.x <= b.x && a.x + a.width >= b.x + b.width) {
+
+            if (a.y <= b.y && a.y + a.height >= b.y + b.height) {
+                hit = true;
+            }
+        }
+        return hit;
+    }
 
     function draw(ctx, element) {
         switch (element.kind) {
@@ -125,7 +185,7 @@ let ball = new Ball(350, 100, 10, board);
 
 //TECLADO
 document.addEventListener("keydown", function (event) {
-    //ARRIBA A ABAJO
+    //ARRIBA  ABAJO
     if (event.keyCode == 38) {
         event.preventDefault();
         bar.up();
